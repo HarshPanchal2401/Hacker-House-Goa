@@ -2,15 +2,21 @@
 
 @layer base {
   :root {
-    --hh-green: #015E39;
-    --hh-green-dark: #004227;
-    --hh-yellow: #FFE500;
-    --hh-pink: #FF007F;
-    --hh-cream: #FAF6E9;
+    --goa-green: #004d3a;
+    --goa-green-dark: #003c2d;
+    --goa-yellow: #f7c515;
+    --goa-pink: #ed1765;
+    --goa-cream: #f5ead5;
+
+    --hh-green: #004d3a;
+    --hh-green-dark: #003c2d;
+    --hh-yellow: #f7c515;
+    --hh-pink: #ed1765;
+    --hh-cream: #f5ead5;
   }
 
   body {
-    background-color: var(--hh-green);
+    background-color: var(--goa-green);
     color: #ffffff;
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
@@ -31,11 +37,17 @@
   font-family: 'Rozha One', 'Noto Sans Devanagari', serif;
 }
 
+/* Responsive Card Container Constraints matching prompt requirements */
+.goa-card-container {
+  width: min(100%, 520px);
+  aspect-ratio: 0.66;
+}
+
 /* Background Texture */
 .bg-hh-emerald {
-  background-color: var(--hh-green);
+  background-color: var(--goa-green);
   background-image: 
-    radial-gradient(rgba(255, 229, 0, 0.08) 1px, transparent 0),
+    radial-gradient(rgba(247, 197, 21, 0.08) 1px, transparent 0),
     linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.5));
   background-size: 24px 24px, 100% 100%;
 }
