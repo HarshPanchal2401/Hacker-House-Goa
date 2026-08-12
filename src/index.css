@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --hh-green: #015E39;
+    --hh-green-dark: #004227;
+    --hh-yellow: #FFE500;
+    --hh-pink: #FF007F;
+    --hh-cream: #FAF6E9;
+  }
+
+  body {
+    background-color: var(--hh-green);
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+.font-serif-display {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.font-mono-tech {
+  font-family: 'Space Mono', monospace;
+}
+
+.font-hindi {
+  font-family: 'Rozha One', 'Noto Sans Devanagari', serif;
+}
+
+/* Background Texture */
+.bg-hh-emerald {
+  background-color: var(--hh-green);
+  background-image: 
+    radial-gradient(rgba(255, 229, 0, 0.08) 1px, transparent 0),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.5));
+  background-size: 24px 24px, 100% 100%;
+}
+
+/* Ticker marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+}
