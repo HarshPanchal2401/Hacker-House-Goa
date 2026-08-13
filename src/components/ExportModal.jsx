@@ -27,13 +27,30 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
     document.body.removeChild(link);
   };
 
-  const handleShareToX = () => {
+  const handleShareToX = async () => {
     triggerConfetti();
 
     const fileName = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
     const caption = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio\n\nMake yours at https://hhgoa.com`;
 
-    // Step 1: Auto-download the badge image to phone gallery / PC downloads
+    // Convert base64 data URL → Blob reliably (fetch(data:) is blocked on some mobile browsers)
+    const dataUrlToBlob = (dataUrl) => {
+      const [header, base64] = dataUrl.split(',');
+      const mime = header.match(/:(.*?);/)[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    };
+
+    let imageBlob = null;
+    try {
+      imageBlob = dataUrlToBlob(imageDataUrl);
+    } catch (e) {
+      console.warn('Blob conversion failed:', e);
+    }
+
+    // 1. Auto-download image file so it's saved in user's gallery/downloads
     try {
       const link = document.createElement('a');
       link.download = fileName;
@@ -42,28 +59,62 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       link.click();
       document.body.removeChild(link);
     } catch (e) {
-      console.error('Download failed:', e);
+      console.error('Auto download failed:', e);
     }
 
-    // Step 2: Tell user what's happening
-    setShareStatus('📥 Badge saved! Opening X — attach the saved image to your post.');
+    // 2. Try Native Web Share API with image file (best experience on mobile)
+    //    This opens native OS share sheet where user can pick X directly with image attached
+    if (imageBlob && navigator.share && navigator.canShare) {
+      try {
+        const file = new File([imageBlob], fileName, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Hacker House Goa 2026 Badge',
+            text: caption,
+            files: [file],
+          });
+          setShareStatus('Shared! Select X from the share sheet.');
+          return;
+        }
+      } catch (shareErr) {
+        if (shareErr.name !== 'AbortError') {
+          console.warn('Native file share skipped:', shareErr);
+        } else {
+          // User cancelled the share sheet — don't proceed to X
+          return;
+        }
+      }
+    }
 
-    // Step 3: Open X directly — native app if installed, browser otherwise
+    // 3. Copy image to clipboard as fallback
+    if (imageBlob && navigator.clipboard && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+        setShareStatus('Image copied! Paste it into your X post.');
+      } catch (e) {
+        setShareStatus('Badge downloaded! Attach photo to your X post.');
+      }
+    } else {
+      setShareStatus('Badge downloaded! Attach photo to your X post.');
+    }
+
+    // 4. Redirect to X post composer (caption pre-filled, user attaches image manually)
     const webUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
-    const appUrl = `twitter://post?message=${encodeURIComponent(caption)}`;
+    const appUrl = `twitter://post?text=${encodeURIComponent(caption)}`;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (isMobile) {
-      // Try opening native X app first; fallback to browser after 800ms if app not installed
+      const start = Date.now();
       window.location.href = appUrl;
       setTimeout(() => {
-        window.open(webUrl, '_blank', 'noopener,noreferrer');
-      }, 800);
+        if (Date.now() - start < 1500) {
+          window.open(webUrl, '_blank', 'noopener,noreferrer');
+        }
+      }, 600);
     } else {
       window.open(webUrl, '_blank', 'noopener,noreferrer');
     }
   };
-
 
 
 
@@ -132,21 +183,14 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
         </div>
 
         {shareStatus ? (
-          <div className="mt-3 bg-emerald-50 border border-emerald-400 rounded-xl p-3 text-center shadow-sm">
-            <p className="text-[11px] font-mono-tech text-[#015E39] font-bold">{shareStatus}</p>
-            <p className="text-[10px] font-mono-tech text-gray-600 mt-1">In X, tap the 📎 photo icon to attach your saved badge</p>
-          </div>
+          <p className="text-[11px] font-mono-tech text-[#015E39] font-bold text-center mt-3 bg-emerald-100/90 p-2 rounded-lg border border-emerald-400 shadow-sm animate-pulse">
+            ✨ {shareStatus}
+          </p>
         ) : (
-          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-center">
-            <p className="text-[10px] font-mono-tech text-gray-500">
-              📥 Badge auto-saves to your phone gallery / PC downloads
-            </p>
-            <p className="text-[10px] font-mono-tech text-gray-500 mt-0.5">
-              Then tap 📎 in X to attach it to your post!
-            </p>
-          </div>
+          <p className="text-[11px] font-mono-tech text-gray-500 text-center mt-3">
+            💡 Badge image auto-downloads & copies so you can attach it directly to your X post!
+          </p>
         )}
-
 
       </div>
 
