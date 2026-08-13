@@ -104,7 +104,7 @@ export default function BadgeCanvas({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function drawPfpPlaceholder(ctx, W, H, YELLOW, PINK) {
-  const cx = W / 2, cy = H / 2, r = 330;
+  const cx = W / 2, cy = H / 2, r = 318;
 
   // Clip circle + semi-transparent fill
   ctx.save();
@@ -114,13 +114,6 @@ function drawPfpPlaceholder(ctx, W, H, YELLOW, PINK) {
   ctx.fillStyle = 'rgba(0,48,36,0.78)';
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
   ctx.restore();
-
-  // Border ring
-  ctx.strokeStyle = YELLOW;
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
 
   // Camera icon
   drawCameraIcon(ctx, cx, cy - 20, 90, YELLOW);
@@ -136,7 +129,7 @@ function drawPfpPlaceholder(ctx, W, H, YELLOW, PINK) {
 }
 
 function paintPfpPhoto(ctx, img, W, H, zoom, panX, panY, YELLOW) {
-  const cx = W / 2, cy = H / 2, r = 330;
+  const cx = W / 2, cy = H / 2, r = 318;
 
   ctx.save();
   ctx.beginPath();
@@ -151,169 +144,170 @@ function paintPfpPhoto(ctx, img, W, H, zoom, panX, panY, YELLOW) {
   ctx.drawImage(img, -rW / 2, -rH / 2, rW, rH);
   ctx.restore();
 
-  // Re-draw border ring on top
+  // Draw yellow border ring around user photo
+  ctx.save();
   ctx.strokeStyle = YELLOW;
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
 }
+
+
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ID Card helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PHOTO_W = 495, PHOTO_H = 390, PHOTO_Y = 480, PHOTO_R = 24;
+// ID card circular photo — centre and radius in canvas pixels
+const CARD_R  = 195;           // radius
+const CARD_CX = 540;           // horizontal centre (= W/2 for 1080-wide canvas)
+const CARD_CY = 675;           // vertical centre
 
 function drawIdCardPlaceholder(ctx, W, H, YELLOW, PINK, CREAM, TXTGRN, name, role, team) {
-  const photoX = (W - PHOTO_W) / 2;
+  const cx = CARD_CX, cy = CARD_CY, r = CARD_R;
 
-  // ── Photo placeholder box ─────────────────────────────────────────────────
+  // ── Circle placeholder ────────────────────────────────────────────────────
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(photoX, PHOTO_Y, PHOTO_W, PHOTO_H, PHOTO_R);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
   ctx.fillStyle = 'rgba(0,48,36,0.82)';
-  ctx.fillRect(photoX, PHOTO_Y, PHOTO_W, PHOTO_H);
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
   ctx.restore();
 
-  // Dashed inner border
+  // Dashed inner ring
   ctx.save();
   ctx.setLineDash([14, 8]);
   ctx.strokeStyle = 'rgba(247,197,21,0.65)';
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.roundRect(photoX + 20, PHOTO_Y + 20, PHOTO_W - 40, PHOTO_H - 40, 16);
+  ctx.arc(cx, cy, r - 22, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
 
-  // Camera icon + text
-  const cx = photoX + PHOTO_W / 2;
-  const cy = PHOTO_Y + PHOTO_H / 2 - 22;
-  drawCameraIcon(ctx, cx, cy, 78, YELLOW);
-
+  // Camera icon + label
+  drawCameraIcon(ctx, cx, cy - 20, 80, YELLOW);
   ctx.textAlign = 'center';
   ctx.fillStyle = YELLOW;
-  ctx.font = '700 24px "Space Mono", monospace';
-  ctx.fillText('YOUR PHOTO HERE', cx, cy + 62);
+  ctx.font = '700 22px "Space Mono", monospace';
+  ctx.fillText('YOUR PHOTO HERE', cx, cy + 68);
   ctx.fillStyle = 'rgba(247,197,21,0.6)';
-  ctx.font = '400 16px "Space Mono", monospace';
-  ctx.fillText('Upload from the panel on the right', cx, cy + 88);
+  ctx.font = '400 15px "Space Mono", monospace';
+  ctx.fillText('Face auto-detected & centred', cx, cy + 94);
 
-  // Pink border on top
+  // Pink circle border
   ctx.strokeStyle = PINK;
-  ctx.lineWidth = 12;
+  ctx.lineWidth = 10;
   ctx.beginPath();
-  ctx.roundRect(photoX, PHOTO_Y, PHOTO_W, PHOTO_H, PHOTO_R);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
 
-  // ── Cream info panel ──────────────────────────────────────────────────────
+  // ── Info panel below ─────────────────────────────────────────────────────
   drawInfoPanel(ctx, W, YELLOW, PINK, CREAM, TXTGRN, name, role, team);
 }
 
 function paintIdCardPhoto(ctx, img, W, H, zoom, panX, panY, PINK) {
-  const photoX = (W - PHOTO_W) / 2;
+  const cx = CARD_CX, cy = CARD_CY, r = CARD_R;
 
-  // Clip + paint user photo
+  // Clip to circle, paint photo
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(photoX, PHOTO_Y, PHOTO_W, PHOTO_H, PHOTO_R);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
 
-  const centerX = photoX + PHOTO_W / 2;
-  const centerY = PHOTO_Y + PHOTO_H / 2;
-  ctx.translate(centerX + panX, centerY + panY);
+  ctx.translate(cx + panX, cy + panY);
   ctx.scale(zoom, zoom);
 
+  // Cover the circle frame (2r × 2r)
   const asp = img.width / img.height;
-  const fAsp = PHOTO_W / PHOTO_H;
-  let rW = PHOTO_W, rH = PHOTO_H;
-  if (asp > fAsp) { rH = PHOTO_H; rW = PHOTO_H * asp; }
-  else             { rW = PHOTO_W; rH = PHOTO_W / asp; }
+  let rW = r * 2, rH = r * 2;
+  if (asp > 1) { rW = r * 2 * asp; }
+  else         { rH = (r * 2) / asp; }
   ctx.drawImage(img, -rW / 2, -rH / 2, rW, rH);
   ctx.restore();
 
-  // Pink border on top of photo
+  // Pink circle border on top
   ctx.strokeStyle = PINK;
-  ctx.lineWidth = 12;
+  ctx.lineWidth = 10;
   ctx.beginPath();
-  ctx.roundRect(photoX, PHOTO_Y, PHOTO_W, PHOTO_H, PHOTO_R);
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
 }
 
 function drawInfoPanel(ctx, W, YELLOW, PINK, CREAM, TXTGRN, name, role, team) {
-  const boxW = 560, boxH = 340;
+  const boxW = 500, boxH = 320;
   const boxX = (W - boxW) / 2, boxY = 875;
-  const rad  = 24;
+  const rad  = 26;
 
   // Panel shadow + fill
   ctx.shadowColor = 'rgba(0,0,0,0.35)';
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetY = 10;
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
   ctx.fillStyle = CREAM;
   ctx.beginPath();
   ctx.roundRect(boxX, boxY, boxW, boxH, rad);
   ctx.fill();
   ctx.shadowColor = 'transparent';
 
-  const lx = boxX + 28;
+  // Golden inner border
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(boxX + 4, boxY + 4, boxW - 8, boxH - 8, rad - 4);
+  ctx.stroke();
 
-  // ROW 1 — NAME
-  const y1 = boxY + 60;
-  drawCircleIcon(ctx, lx + 22, y1, 'user', PINK);
+  const lx = boxX + 22;
+
+  // ── ROW 1 — NAME ──────────────────────────────────────────────────────────
+  const y1 = boxY + 52;
+  drawCircleIcon(ctx, lx + 20, y1, 'user', PINK);
   ctx.textAlign = 'left';
   ctx.fillStyle = TXTGRN;
-  ctx.font = '800 15px "Space Mono", monospace';
-  ctx.fillText('NAME', lx + 62, y1 - 12);
+  ctx.font = '800 14px "Space Mono", monospace';
+  ctx.fillText('NAME', lx + 56, y1 - 12);
 
-  const displayName = name ? name.trim().toUpperCase() : 'YOUR NAME';
-  ctx.fillStyle = name ? TXTGRN : 'rgba(0,77,58,0.45)';
-  ctx.font = '900 32px "Playfair Display", serif';
-  ctx.fillText(displayName, lx + 62, y1 + 18);
-  dashedLine(ctx, lx, y1 + 35, boxX + 375, y1 + 35, PINK);
-
-  // ROW 2 — ROLE
-  const y2 = y1 + 100;
-  drawCircleIcon(ctx, lx + 22, y2, 'briefcase', PINK);
+  const displayName = name ? name.trim().toUpperCase() : 'HARSH PANCHAL';
   ctx.fillStyle = TXTGRN;
-  ctx.font = '800 15px "Space Mono", monospace';
-  ctx.fillText('ROLE', lx + 62, y2 - 12);
+  ctx.font = '900 32px "Playfair Display", serif';
+  ctx.fillText(displayName, lx + 56, y1 + 18);
+
+  // Horizontal dashed divider 1
+  dashedLine(ctx, boxX + 16, boxY + 102, boxX + boxW - 16, boxY + 102, 'rgba(212, 175, 55, 0.6)');
+
+  // ── ROW 2 — ROLE ──────────────────────────────────────────────────────────
+  const y2 = boxY + 152;
+  drawCircleIcon(ctx, lx + 20, y2, 'briefcase', PINK);
+  ctx.fillStyle = TXTGRN;
+  ctx.font = '800 14px "Space Mono", monospace';
+  ctx.fillText('ROLE', lx + 56, y2 - 12);
 
   const displayRole = role ? role.trim().toUpperCase() : 'AI/ML ENGINEER';
   ctx.fillStyle = PINK;
-  ctx.font = '800 24px "Space Mono", monospace';
-  ctx.fillText(displayRole, lx + 62, y2 + 16);
-  dashedLine(ctx, lx, y2 + 35, boxX + 375, y2 + 35, PINK);
+  ctx.font = '800 23px "Space Mono", monospace';
+  ctx.fillText(displayRole, lx + 56, y2 + 16);
 
-  // ROW 3 — TEAM NAME
-  const y3 = y2 + 100;
-  drawCircleIcon(ctx, lx + 22, y3, 'team', PINK);
+  // Horizontal dashed divider 2
+  dashedLine(ctx, boxX + 16, boxY + 202, boxX + boxW - 16, boxY + 202, 'rgba(212, 175, 55, 0.6)');
+
+  // ── ROW 3 — BUILDER TITLE ─────────────────────────────────────────────────
+  const y3 = boxY + 252;
+  drawCircleIcon(ctx, lx + 20, y3, 'star', PINK);
   ctx.fillStyle = TXTGRN;
-  ctx.font = '800 15px "Space Mono", monospace';
-  ctx.fillText('TEAM NAME', lx + 62, y3 - 12);
+  ctx.font = '800 14px "Space Mono", monospace';
+  ctx.fillText('BUILDER TITLE', lx + 56, y3 - 12);
 
-  const displayTeam = team ? team.trim().toUpperCase().replace('@', '') : 'YOUR TEAM NAME';
-  ctx.fillStyle = team ? PINK : 'rgba(237,23,101,0.5)';
-  ctx.font = '800 24px "Space Mono", monospace';
-  ctx.fillText(displayTeam, lx + 62, y3 + 16);
-
-  // Vertical dashed divider
-  ctx.save();
-  ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = 'rgba(237,23,101,0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(boxX + 395, boxY + 28);
-  ctx.lineTo(boxX + 395, boxY + boxH - 28);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
-
-  // Right column: setting sun + anchor
-  drawSun(ctx, boxX + 475, boxY + 100, YELLOW);
-  drawAnchor(ctx, boxX + 475, boxY + 255, PINK);
+  const displayTeam = team ? team.trim().toUpperCase().replace('@', '') : 'AGENT ARCHITECT';
+  ctx.fillStyle = PINK;
+  ctx.font = '800 23px "Space Mono", monospace';
+  ctx.fillText(displayTeam, lx + 56, y3 + 16);
 }
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared drawing primitives
@@ -350,30 +344,45 @@ function drawCameraIcon(ctx, cx, cy, size, color) {
 function drawCircleIcon(ctx, cx, cy, type, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 25, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
 
   if (type === 'user') {
-    ctx.beginPath(); ctx.arc(cx, cy - 4, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy + 10, 10, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy - 5, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy + 12, 12, Math.PI, 0); ctx.fill();
   } else if (type === 'briefcase') {
-    ctx.fillRect(cx - 8, cy - 3, 16, 11);
-    ctx.strokeRect(cx - 4, cy - 7, 8, 4);
+    ctx.fillRect(cx - 10, cy - 4, 20, 14);
+    ctx.strokeRect(cx - 5, cy - 9, 10, 5);
+  } else if (type === 'star') {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+      const x = cx + 13 * Math.cos(a);
+      const y = cy + 13 * Math.sin(a);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      const a2 = a + Math.PI / 5;
+      const x2 = cx + 5.5 * Math.cos(a2);
+      const y2 = cy + 5.5 * Math.sin(a2);
+      ctx.lineTo(x2, y2);
+    }
+    ctx.closePath();
+    ctx.fill();
   } else {
     ctx.beginPath();
-    ctx.arc(cx - 4, cy - 3, 4, 0, Math.PI * 2);
-    ctx.arc(cx + 4, cy - 3, 4, 0, Math.PI * 2);
+    ctx.arc(cx - 5, cy - 3, 5, 0, Math.PI * 2);
+    ctx.arc(cx + 5, cy - 3, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx - 4, cy + 10, 7, Math.PI, 0);
-    ctx.arc(cx + 4, cy + 10, 7, Math.PI, 0);
+    ctx.arc(cx - 5, cy + 12, 8, Math.PI, 0);
+    ctx.arc(cx + 5, cy + 12, 8, Math.PI, 0);
     ctx.fill();
   }
 }
+
 
 function dashedLine(ctx, x1, y1, x2, y2, color) {
   ctx.save();
@@ -391,17 +400,22 @@ function drawSun(ctx, sx, sy, color) {
   ctx.save();
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(sx, sy, 30, Math.PI, 0);
+  ctx.arc(sx, sy, 26, Math.PI, 0);
   ctx.fill();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   for (let i = 0; i < 5; i++) {
     const a = Math.PI + (i * Math.PI) / 4;
     ctx.beginPath();
-    ctx.moveTo(sx + Math.cos(a) * 34, sy + Math.sin(a) * 34);
-    ctx.lineTo(sx + Math.cos(a) * 44, sy + Math.sin(a) * 44);
+    ctx.moveTo(sx + Math.cos(a) * 30, sy + Math.sin(a) * 30);
+    ctx.lineTo(sx + Math.cos(a) * 38, sy + Math.sin(a) * 38);
     ctx.stroke();
   }
+  // Horizon line
+  ctx.beginPath();
+  ctx.moveTo(sx - 34, sy + 3);
+  ctx.lineTo(sx + 34, sy + 3);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -420,3 +434,37 @@ function drawAnchor(ctx, ax, ay, color) {
   ctx.stroke();
   ctx.restore();
 }
+
+function drawPalmTree(ctx, px, py, color) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 3.5;
+
+  // Trunk
+  ctx.beginPath();
+  ctx.moveTo(px, py + 12);
+  ctx.quadraticCurveTo(px + 4, py, px - 2, py - 12);
+  ctx.stroke();
+
+  // Leaves
+  const tx = px - 2, ty = py - 12;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(tx - 12, ty - 6, tx - 18, ty + 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(tx - 8, ty - 14, tx - 12, ty - 18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(tx + 12, ty - 6, tx + 18, ty + 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(tx + 8, ty - 14, tx + 12, ty - 18); ctx.stroke();
+
+  // Waves
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 2; i++) {
+    const wy = py + 16 + i * 5;
+    ctx.beginPath();
+    ctx.moveTo(px - 14, wy);
+    ctx.quadraticCurveTo(px - 7, wy - 3, px, wy);
+    ctx.quadraticCurveTo(px + 7, wy + 3, px + 14, wy);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
