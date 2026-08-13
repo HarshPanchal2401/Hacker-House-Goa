@@ -67,6 +67,21 @@ export default function App() {
    *  3. Run face detection
    *  4. Compute smart zoom/pan placement
    */
+  const readFileAsDataUrl = (fileOrBlob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(fileOrBlob);
+    });
+  };
+
+  /**
+   * Mobile-optimized upload pipeline:
+   *  1. HEIC → JPEG conversion for iOS Camera Roll photos
+   *  2. Base64 FileReader Data URL for 100% mobile browser compatibility
+   *  3. Run face detection + auto-framing
+   */
   const handleFileSelect = async (file) => {
     if (!file) return;
     setIsDetecting(true);
@@ -87,43 +102,48 @@ export default function App() {
           const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.88 });
           blob = Array.isArray(converted) ? converted[0] : converted;
         } catch (heicErr) {
-          console.warn('HEIC conversion failed, trying original:', heicErr);
+          console.warn('HEIC conversion failed, using raw file:', heicErr);
         }
       }
 
-      // ── Set photo immediately for UI feedback ───────────────────────────
-      const objectUrl = URL.createObjectURL(blob);
-      setPhoto(objectUrl);
+      // ── Base64 Data URL for persistent mobile rendering ─────────────────
+      const dataUrl = await readFileAsDataUrl(blob);
+      setPhoto(dataUrl);
 
       // ── Load image element ───────────────────────────────────────────────
       const img = new Image();
       img.onload = async () => {
         loadedImgRef.current = img;
 
-        // ── Face detection ─────────────────────────────────────────────────
-        const face = await detectFace(img);
-        setFaceResult(face);
+        try {
+          // ── Face detection ───────────────────────────────────────────────
+          const face = await detectFace(img);
+          setFaceResult(face);
 
-        // ── Compute smart placement ────────────────────────────────────────
-        const placement = computePhotoPlacement({
-          imgWidth: img.naturalWidth,
-          imgHeight: img.naturalHeight,
-          mode,
-          faceResult: face,
-        });
+          // ── Compute smart placement ──────────────────────────────────────
+          const placement = computePhotoPlacement({
+            imgWidth: img.naturalWidth,
+            imgHeight: img.naturalHeight,
+            mode,
+            faceResult: face,
+          });
 
-        setZoom(placement.zoom);
-        setPanX(placement.panX);
-        setPanY(placement.panY);
+          setZoom(placement.zoom);
+          setPanX(placement.panX);
+          setPanY(placement.panY);
+        } catch (detErr) {
+          console.warn('Face detection error:', detErr);
+        } finally {
+          setIsDetecting(false);
+        }
+      };
+
+      img.onerror = (e) => {
+        console.error('Failed to load image element on mobile:', e);
         setIsDetecting(false);
       };
 
-      img.onerror = () => {
-        console.error('Failed to load image');
-        setIsDetecting(false);
-      };
-
-      img.src = objectUrl;
+      img.src = dataUrl;
       setFormError('');
 
     } catch (err) {
@@ -131,6 +151,7 @@ export default function App() {
       setIsDetecting(false);
     }
   };
+
 
   const handleGenerate = async () => {
     const missing = [];

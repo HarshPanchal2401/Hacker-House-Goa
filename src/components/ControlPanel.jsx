@@ -104,11 +104,12 @@ export default function ControlPanel({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.heic,.heif"
+              accept="image/*"
               className="hidden"
               onChange={handleFileChange}
               disabled={isLoading}
             />
+
 
             {/* State: detecting */}
             {isDetecting && (
