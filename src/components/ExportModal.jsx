@@ -26,13 +26,28 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
     document.body.removeChild(link);
   };
 
-  const handleShareToX = () => {
+  const [shareStatus, setShareStatus] = useState('');
+
+  const handleShareToX = async () => {
     triggerConfetti();
 
     const fileName = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
     const caption = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio\n\nMake yours at https://hhgoa.com`;
 
-    // 1. Auto-download image so it's instantly saved in photos/downloads
+    // 1. Copy image blob directly to clipboard (if supported)
+    try {
+      const resp = await fetch(imageDataUrl);
+      const blob = await resp.blob();
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        setShareStatus('Image copied & downloaded! Attach or paste on X.');
+      }
+    } catch (e) {
+      console.warn('Clipboard image copy not supported:', e);
+      setShareStatus('Badge downloaded! Attach photo on X.');
+    }
+
+    // 2. Auto-download image file so it's in user's downloads/photos
     try {
       const link = document.createElement('a');
       link.download = fileName;
@@ -44,7 +59,27 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       console.error('Auto download failed:', e);
     }
 
-    // 2. Direct launch: Native X App if installed, Browser if uninstalled
+    // 3. Try Native Web Share API (attaches image directly on Mobile supported browsers)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(imageDataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Hacker House Goa 2026 Badge',
+            text: caption,
+            files: [file],
+          });
+          return;
+        }
+      } catch (shareErr) {
+        console.warn('Native file share skipped:', shareErr);
+      }
+    }
+
+    // 4. Redirect to X (Twitter) post composer
     const webUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
     const appUrl = `twitter://post?text=${encodeURIComponent(caption)}`;
 
@@ -54,7 +89,6 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       const start = Date.now();
       window.location.href = appUrl;
       setTimeout(() => {
-        // If app didn't take over focus within 600ms, open in web browser
         if (Date.now() - start < 1500) {
           window.open(webUrl, '_blank', 'noopener,noreferrer');
         }
@@ -63,6 +97,7 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       window.open(webUrl, '_blank', 'noopener,noreferrer');
     }
   };
+
 
 
 
@@ -120,9 +155,16 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
           </button>
         </div>
 
-        <p className="text-[11px] font-mono-tech text-gray-500 text-center mt-3">
-          💡 Badge image auto-downloads so you can attach it directly to your X post!
-        </p>
+        {shareStatus ? (
+          <p className="text-[11px] font-mono-tech text-[#015E39] font-bold text-center mt-3 bg-emerald-100/90 p-2 rounded-lg border border-emerald-400 shadow-sm animate-pulse">
+            ✨ {shareStatus}
+          </p>
+        ) : (
+          <p className="text-[11px] font-mono-tech text-gray-500 text-center mt-3">
+            💡 Badge image auto-downloads & copies so you can attach it directly to your X post!
+          </p>
+        )}
+
       </div>
 
     </div>
