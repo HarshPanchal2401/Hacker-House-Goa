@@ -26,13 +26,36 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
     document.body.removeChild(link);
   };
 
-  const handleShareToX = () => {
+  const handleShareToX = async () => {
     triggerConfetti();
 
-    // Auto-download image so user has it ready to upload on X
+    const fileName = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
+    const caption = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio\n\nMake yours at https://hhgoa.com`;
+
+    // 1. Try Native Web Share API (attaches image directly on Mobile & supported browsers)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(imageDataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Hacker House Goa 2026 Badge',
+            text: caption,
+            files: [file],
+          });
+          return;
+        }
+      } catch (shareErr) {
+        console.warn('Native share not completed:', shareErr);
+      }
+    }
+
+    // 2. Fallback for Web Intent: Auto-download image so user has it ready
     try {
       const link = document.createElement('a');
-      link.download = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
+      link.download = fileName;
       link.href = imageDataUrl;
       document.body.appendChild(link);
       link.click();
@@ -41,11 +64,11 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       console.error('Auto download failed:', e);
     }
 
-    const text = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio`;
-    const url = 'https://hhgoa.com/';
-    const tweetIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    // 3. Open X tweet intent with caption & hashtags
+    const tweetIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
     window.open(tweetIntentUrl, '_blank', 'noopener,noreferrer');
   };
+
 
 
   const handleCopyLink = () => {
@@ -100,7 +123,11 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
           </button>
         </div>
 
+        <p className="text-[11px] font-mono-tech text-gray-500 text-center mt-3">
+          💡 Badge image auto-downloads so you can attach it directly to your X post!
+        </p>
       </div>
+
     </div>
   );
 }
