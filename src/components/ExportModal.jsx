@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Download, Check, Sparkles, X, Copy, ExternalLink } from 'lucide-react';
+import { Download, Check, Sparkles, X, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, builderName, handle }) {
   const [copied, setCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
 
-  if (!isOpen || !imageDataUrl) return null;
+  if (!isOpen) return null;
 
   const triggerConfetti = () => {
     confetti({
@@ -26,28 +27,30 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
     document.body.removeChild(link);
   };
 
-  const [shareStatus, setShareStatus] = useState('');
-
   const handleShareToX = async () => {
     triggerConfetti();
 
     const fileName = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
     const caption = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio\n\nMake yours at https://hhgoa.com`;
 
-    // 1. Copy image blob directly to clipboard (if supported)
+    // Convert base64 data URL → Blob reliably (fetch(data:) is blocked on some mobile browsers)
+    const dataUrlToBlob = (dataUrl) => {
+      const [header, base64] = dataUrl.split(',');
+      const mime = header.match(/:(.*?);/)[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    };
+
+    let imageBlob = null;
     try {
-      const resp = await fetch(imageDataUrl);
-      const blob = await resp.blob();
-      if (navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        setShareStatus('Image copied & downloaded! Attach or paste on X.');
-      }
+      imageBlob = dataUrlToBlob(imageDataUrl);
     } catch (e) {
-      console.warn('Clipboard image copy not supported:', e);
-      setShareStatus('Badge downloaded! Attach photo on X.');
+      console.warn('Blob conversion failed:', e);
     }
 
-    // 2. Auto-download image file so it's in user's downloads/photos
+    // 1. Auto-download image file so it's saved in user's gallery/downloads
     try {
       const link = document.createElement('a');
       link.download = fileName;
@@ -59,30 +62,45 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       console.error('Auto download failed:', e);
     }
 
-    // 3. Try Native Web Share API (attaches image directly on Mobile supported browsers)
-    if (navigator.share && navigator.canShare) {
+    // 2. Try Native Web Share API with image file (best experience on mobile)
+    //    This opens native OS share sheet where user can pick X directly with image attached
+    if (imageBlob && navigator.share && navigator.canShare) {
       try {
-        const response = await fetch(imageDataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], fileName, { type: 'image/png' });
-
+        const file = new File([imageBlob], fileName, { type: 'image/png' });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             title: 'Hacker House Goa 2026 Badge',
             text: caption,
             files: [file],
           });
+          setShareStatus('Shared! Select X from the share sheet.');
           return;
         }
       } catch (shareErr) {
-        console.warn('Native file share skipped:', shareErr);
+        if (shareErr.name !== 'AbortError') {
+          console.warn('Native file share skipped:', shareErr);
+        } else {
+          // User cancelled the share sheet — don't proceed to X
+          return;
+        }
       }
     }
 
-    // 4. Redirect to X (Twitter) post composer
+    // 3. Copy image to clipboard as fallback
+    if (imageBlob && navigator.clipboard && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
+        setShareStatus('Image copied! Paste it into your X post.');
+      } catch (e) {
+        setShareStatus('Badge downloaded! Attach photo to your X post.');
+      }
+    } else {
+      setShareStatus('Badge downloaded! Attach photo to your X post.');
+    }
+
+    // 4. Redirect to X post composer (caption pre-filled, user attaches image manually)
     const webUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
     const appUrl = `twitter://post?text=${encodeURIComponent(caption)}`;
-
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (isMobile) {
@@ -97,6 +115,7 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       window.open(webUrl, '_blank', 'noopener,noreferrer');
     }
   };
+
 
 
 
@@ -126,13 +145,21 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
         </div>
 
         {/* Preview */}
-        <div className="relative rounded-xl overflow-hidden shadow-lg border border-[#015E39]/30 bg-[#004227] mb-5 max-h-[42vh] flex items-center justify-center">
-          <img
-            src={imageDataUrl}
-            alt="HH Goa Generated Graphic"
-            className="w-full h-full object-contain max-h-[40vh]"
-          />
+        <div className="relative rounded-xl overflow-hidden shadow-lg border-2 border-[#015E39]/40 bg-[#002d22] mb-5 max-h-[42vh] min-h-[220px] flex items-center justify-center">
+          {imageDataUrl ? (
+            <img
+              src={imageDataUrl}
+              alt="HH Goa Generated Graphic"
+              className="w-full h-full object-contain max-h-[40vh]"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[#FFE500] mb-2" />
+              <p className="font-mono-tech text-xs font-bold text-emerald-100">Preparing your badge image…</p>
+            </div>
+          )}
         </div>
+
 
         {/* Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
