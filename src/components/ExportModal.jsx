@@ -26,33 +26,13 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
     document.body.removeChild(link);
   };
 
-  const handleShareToX = async () => {
+  const handleShareToX = () => {
     triggerConfetti();
 
     const fileName = `HH_Goa_2026_${mode}_${(builderName || 'builder').replace(/\s+/g, '_')}.png`;
     const caption = `I'm attending Hacker House Goa 2026! 🌴🔥\n\nGenerated my official ${mode === 'pfp' ? 'PFP' : 'ID card'} with #FrameInGoa @hhgoa @247pmstudio\n\nMake yours at https://hhgoa.com`;
 
-    // 1. Try Native Web Share API (attaches image directly on Mobile & supported browsers)
-    if (navigator.share && navigator.canShare) {
-      try {
-        const response = await fetch(imageDataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'Hacker House Goa 2026 Badge',
-            text: caption,
-            files: [file],
-          });
-          return;
-        }
-      } catch (shareErr) {
-        console.warn('Native share not completed:', shareErr);
-      }
-    }
-
-    // 2. Fallback for Web Intent: Auto-download image so user has it ready
+    // 1. Auto-download image so it's instantly saved in photos/downloads
     try {
       const link = document.createElement('a');
       link.download = fileName;
@@ -64,10 +44,27 @@ export default function ExportModal({ isOpen, onClose, imageDataUrl, mode, build
       console.error('Auto download failed:', e);
     }
 
-    // 3. Open X tweet intent with caption & hashtags
-    const tweetIntentUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
-    window.open(tweetIntentUrl, '_blank', 'noopener,noreferrer');
+    // 2. Direct launch: Native X App if installed, Browser if uninstalled
+    const webUrl = `https://x.com/intent/post?text=${encodeURIComponent(caption)}`;
+    const appUrl = `twitter://post?text=${encodeURIComponent(caption)}`;
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      const start = Date.now();
+      window.location.href = appUrl;
+      setTimeout(() => {
+        // If app didn't take over focus within 600ms, open in web browser
+        if (Date.now() - start < 1500) {
+          window.open(webUrl, '_blank', 'noopener,noreferrer');
+        }
+      }, 600);
+    } else {
+      window.open(webUrl, '_blank', 'noopener,noreferrer');
+    }
   };
+
+
 
 
 
